@@ -22,9 +22,16 @@ from playwright.sync_api import sync_playwright
 
 st.set_page_config(page_title="Extractor de Pesos JD", page_icon="🏎️", layout="wide")
 
-# --- ESTILOS VISUALES CORPORATIVOS ---
+# --- ESTILOS VISUALES CORPORATIVOS Y OCULTACIÓN DE PERFIL ---
 st.markdown("""
 <style>
+    /* Ocultar cuadro inferior de perfil y branding de Streamlit */
+    footer { visibility: hidden !important; }
+    #MainMenu { visibility: hidden !important; }
+    header { visibility: hidden !important; }
+    [data-testid="stStatusWidget"] { display: none !important; }
+    .viewerBadge_container__r5tak, [class*="viewerBadge"] { display: none !important; }
+
     button[kind="primary"] { background-color: #B3000C !important; color: white !important; border-radius: 6px !important; font-weight: bold !important; border: none !important; padding: 0.6rem 2rem !important; }
     button[kind="primary"]:hover { background-color: #8A0009 !important; }
     button[kind="secondary"] { background-color: #333333 !important; color: white !important; font-weight: bold !important; border-radius: 6px !important; }
@@ -293,7 +300,7 @@ if st.session_state.estado in ["PAUSADO", "FINALIZADO"] and st.session_state.res
     with col2:
         st.write("**Tabla Consolidada:**")
         
-        # Botón para descargar directo en formato XLSX nativo de Excel
+        # Descarga directa en archivo nativo de Excel (.xlsx) ordenado
         buffer_excel = io.BytesIO()
         with pd.ExcelWriter(buffer_excel, engine="openpyxl") as writer:
             df.to_excel(writer, index=True, index_label="Ítem", sheet_name="Pesos_JD")
