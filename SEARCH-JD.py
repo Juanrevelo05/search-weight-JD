@@ -19,7 +19,8 @@ except Exception as e:
 
 from playwright.sync_api import sync_playwright
 
-st.set_page_config(page_title="Extractor de Pesos JD", page_icon="🚜", layout="wide")
+# Pestaña del navegador con el carro de carreras rojo
+st.set_page_config(page_title="Extractor de Pesos JD", page_icon="🏎️", layout="wide")
 
 # --- ESTILOS VISUALES CORPORATIVOS ---
 st.markdown("""
@@ -43,13 +44,18 @@ if "resultados" not in st.session_state:
     st.session_state.indice_actual = 0
     st.session_state.estado = "ESPERANDO" 
 
+# --- ENCABEZADO CON EL LOGO DEL CARRO ROJO Y EL TÍTULO ---
 col_logo, col_titulo = st.columns([1.5, 5.5])
 with col_logo:
-    if os.path.exists("logo.jpg"): st.image("logo.jpg", width=200)
-    elif os.path.exists("logo.png"): st.image("logo.png", width=200)
+    if os.path.exists("logo.jpg"):
+        st.image("logo.jpg", width=220)
+    elif os.path.exists("logo.png"):
+        st.image("logo.png", width=220)
+    elif os.path.exists("logo.jpeg"):
+        st.image("logo.jpeg", width=220)
 
 with col_titulo:
-    st.title("Extractor de Pesos John Deere")
+    st.title("🏎️ Extractor de Pesos John Deere")
     st.markdown("Consulta y conversión automatizada de catálogo técnico | Salida en **Libras** y **Kilogramos**.")
 
 st.divider()
