@@ -22,15 +22,26 @@ from playwright.sync_api import sync_playwright
 
 st.set_page_config(page_title="Extractor de Pesos JD", page_icon="🏎️", layout="wide")
 
-# --- ESTILOS VISUALES CORPORATIVOS Y OCULTACIÓN DE PERFIL ---
+# --- ESTILOS VISUALES CORPORATIVOS Y ELIMINACIÓN TOTAL DE BARRA INFERIOR ---
 st.markdown("""
 <style>
-    /* Ocultar cuadro inferior de perfil y branding de Streamlit */
-    footer { visibility: hidden !important; }
-    #MainMenu { visibility: hidden !important; }
-    header { visibility: hidden !important; }
+    /* Ocultar barra inferior, creador, hosted with streamlit y badges */
+    footer { display: none !important; visibility: hidden !important; }
+    #MainMenu { display: none !important; visibility: hidden !important; }
+    header { display: none !important; visibility: hidden !important; }
     [data-testid="stStatusWidget"] { display: none !important; }
-    .viewerBadge_container__r5tak, [class*="viewerBadge"] { display: none !important; }
+    [data-testid="stBottom"] { display: none !important; }
+    .viewerBadge_container__r5tak, 
+    [class*="viewerBadge"], 
+    [class*="viewer-badge"], 
+    [class*="StreamlitBranding"],
+    div[class*="ProfileBadge"],
+    div[class*="floating-badge"] { 
+        display: none !important; 
+        visibility: hidden !important; 
+        opacity: 0 !important; 
+        pointer-events: none !important; 
+    }
 
     button[kind="primary"] { background-color: #B3000C !important; color: white !important; border-radius: 6px !important; font-weight: bold !important; border: none !important; padding: 0.6rem 2rem !important; }
     button[kind="primary"]:hover { background-color: #8A0009 !important; }
@@ -95,7 +106,11 @@ def limpiar_popups(page):
         except: pass
 
 st.write("### 1. Ingrese el listado de referencias:")
-referencias_input = st.text_area("Referencias (una por línea):", height=150, placeholder="CE31805\nCE31720\n19M7785")
+referencias_input = st.text_area(
+    "Referencias (una por línea):", 
+    height=150, 
+    placeholder="Pega aquí el listado de referencias (una por línea)..."
+)
 
 col_btn1, col_btn2, col_btn3 = st.columns(3)
 
@@ -227,7 +242,7 @@ if st.session_state.estado == "PROCESANDO":
             except Exception:
                 pass 
             
-            # REGLA FANTASMA / ESTIMADO
+            # REGLA ESTIMADO (< 0.05 lb)
             es_estimado = False
             if peso_lb_encontrado is None or peso_lb_encontrado <= 0:
                 peso_lb_encontrado = 0.05
@@ -300,7 +315,6 @@ if st.session_state.estado in ["PAUSADO", "FINALIZADO"] and st.session_state.res
     with col2:
         st.write("**Tabla Consolidada:**")
         
-        # Descarga directa en archivo nativo de Excel (.xlsx) ordenado
         buffer_excel = io.BytesIO()
         with pd.ExcelWriter(buffer_excel, engine="openpyxl") as writer:
             df.to_excel(writer, index=True, index_label="Ítem", sheet_name="Pesos_JD")
