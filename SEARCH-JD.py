@@ -2,6 +2,7 @@ import subprocess
 import sys
 import os
 import re
+import io
 import streamlit as st
 import pandas as pd
 
@@ -264,28 +265,23 @@ if st.session_state.estado in ["PAUSADO", "FINALIZADO"] and st.session_state.res
         
         if estimado:
             val_ajustado = round(0.05 * factor, 3)
-            peso_ajustado = str(val_ajustado).replace(".", ",")
-            peso_verdadero = "N/D"
+            val_verdadero = "N/D"
         else:
             if peso_raw < 0.05:
-                val_min = round(0.05 * factor, 3)
-                val_real = round(peso_raw * factor, 3)
-                peso_ajustado = str(val_min).replace(".", ",")
-                peso_verdadero = str(val_real).replace(".", ",")
+                val_ajustado = round(0.05 * factor, 3)
+                val_verdadero = round(peso_raw * factor, 3)
             else:
-                val_real = round(peso_raw * factor, 3)
-                peso_ajustado = str(val_real).replace(".", ",")
-                peso_verdadero = ""
+                val_ajustado = round(peso_raw * factor, 3)
+                val_verdadero = ""
                 
         filas_procesadas.append({
             "Referencia": ref,
-            f"Peso ({nombre_unidad})": peso_ajustado,
-            "Peso Original (< 0,05 lb)": peso_verdadero
+            f"Peso ({nombre_unidad})": val_ajustado,
+            "Peso Original (< 0,05 lb)": val_verdadero
         })
-        lista_copiar.append(peso_ajustado)
+        lista_copiar.append(str(val_ajustado).replace(".", ","))
         
     df = pd.DataFrame(filas_procesadas)
-    # Numeración comenzando en 1
     df.index = range(1, len(df) + 1)
     
     col1, col2 = st.columns([1, 2.5])
@@ -296,4 +292,19 @@ if st.session_state.estado in ["PAUSADO", "FINALIZADO"] and st.session_state.res
         
     with col2:
         st.write("**Tabla Consolidada:**")
+        
+        # Botón para descargar directo en formato XLSX nativo de Excel
+        buffer_excel = io.BytesIO()
+        with pd.ExcelWriter(buffer_excel, engine="openpyxl") as writer:
+            df.to_excel(writer, index=True, index_label="Ítem", sheet_name="Pesos_JD")
+        excel_bytes = buffer_excel.getvalue()
+        
+        st.download_button(
+            label="📊 Descargar en Excel (.xlsx)",
+            data=excel_bytes,
+            file_name="Pesos_John_Deere.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            type="primary"
+        )
+        
         st.dataframe(df, use_container_width=True)
