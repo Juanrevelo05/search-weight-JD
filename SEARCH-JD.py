@@ -53,14 +53,22 @@ st.markdown("""
     [data-testid="stAlert"] { background-color: #1E1E1E !important; border-left: 5px solid #B3000C !important; color: #FFFFFF !important; }
     [data-testid="stAlert"] p { color: #FFFFFF !important; font-weight: 500 !important; }
     
-    .nota-discreta {
-        color: #888888;
-        font-size: 13px;
-        margin-top: 15px;
-        padding: 8px 12px;
-        border-left: 3px solid #555555;
-        background-color: #161616;
-        border-radius: 0 4px 4px 0;
+    /* Caja de advertencia amarilla con texto negro */
+    .alerta-amarilla {
+        background-color: #FFE600 !important;
+        color: #000000 !important;
+        font-size: 14px !important;
+        font-weight: 500 !important;
+        padding: 14px 18px !important;
+        border-radius: 8px !important;
+        border-left: 8px solid #D4A000 !important;
+        margin-top: 22px !important;
+        line-height: 1.5 !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+    }
+    .alerta-amarilla b {
+        color: #000000 !important;
+        font-weight: 700 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -173,9 +181,7 @@ if st.session_state.estado == "PROCESANDO":
             peso_lb_encontrado = None
             
             try:
-                # ----------------------------------------------------
-                # Servidor 1: John Deere Shop (Motor original estable)
-                # ----------------------------------------------------
+                # Servidor 1: John Deere Shop
                 url_shop = f"https://shop.deere.com/us/search?text={ref}&productType=all"
                 page.goto(url_shop, timeout=25000)
                 page.wait_for_timeout(1000)
@@ -204,9 +210,7 @@ if st.session_state.estado == "PROCESANDO":
                     peso_lb_encontrado = extraer_peso_universal(texto_pagina)
                     if peso_lb_encontrado is not None: break 
                 
-                # ----------------------------------------------------
                 # Servidor 2: RDO Equipment
-                # ----------------------------------------------------
                 if peso_lb_encontrado is None:
                     texto_progreso.text(f"Consultando fuentes secundarias para: {ref}...")
                     url_rdo = f"https://www.rdoequipment.com/search?q={ref}"
@@ -221,9 +225,7 @@ if st.session_state.estado == "PROCESANDO":
                         peso_lb_encontrado = extraer_peso_universal(texto_rdo)
                     except: pass
 
-                # ----------------------------------------------------
                 # Servidor 3: GreenPartStore
-                # ----------------------------------------------------
                 if peso_lb_encontrado is None:
                     url_gps = f"https://www.greenpartstore.com/search.html?Search={ref}"
                     try:
@@ -242,9 +244,7 @@ if st.session_state.estado == "PROCESANDO":
                             if peso_lb_encontrado is not None: break
                     except: pass
 
-                # ----------------------------------------------------
                 # Servidor 4: Búsqueda web directa
-                # ----------------------------------------------------
                 if peso_lb_encontrado is None:
                     url_google = f"https://www.google.com/search?q=John+Deere+part+{ref}+weight+lbs+oz"
                     try:
@@ -348,9 +348,9 @@ if st.session_state.estado in ["PAUSADO", "FINALIZADO"] and st.session_state.res
         
         st.dataframe(df, use_container_width=True)
 
-    # --- NOTA TÉCNICA DISCRETA ---
+    # --- RECUADRO DE ADVERTENCIA AMARILLO ---
     st.markdown("""
-    <div class="nota-discreta">
-        <b>Nota de control:</b> En piezas mecánicas específicas (como discos de embrague/freno donde el catálogo lista cantidad de estrías o dientes), se recomienda una verificación manual preventiva en caso de detectar valores atípicos.
+    <div class="alerta-amarilla">
+        ⚠️ <b>Advertencia y Control de Calidad:</b> Validar el orden de las referencias guiándose con el número correspondiente antes de copiar y pegar la información. En piezas mecánicas específicas (como discos de embrague/freno donde el catálogo oficial lista cantidad de dientes o estrías), se recomienda una verificación manual preventiva en caso de detectar valores atípicos.
     </div>
     """, unsafe_allow_html=True)
