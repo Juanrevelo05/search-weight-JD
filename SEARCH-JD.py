@@ -25,6 +25,7 @@ st.set_page_config(page_title="Extractor de Pesos JD", page_icon="🏎️", layo
 # --- ESTILOS VISUALES CORPORATIVOS Y ELIMINACIÓN DE BARRA INFERIOR ---
 st.markdown("""
 <style>
+    /* Ocultar barra inferior, creador, hosted with streamlit y badges */
     footer { display: none !important; visibility: hidden !important; }
     #MainMenu { display: none !important; visibility: hidden !important; }
     header { display: none !important; visibility: hidden !important; }
@@ -51,6 +52,16 @@ st.markdown("""
     code { color: #B3000C !important; font-size: 16px !important; font-weight: bold !important; border-left: 5px solid #B3000C !important; }
     [data-testid="stAlert"] { background-color: #1E1E1E !important; border-left: 5px solid #B3000C !important; color: #FFFFFF !important; }
     [data-testid="stAlert"] p { color: #FFFFFF !important; font-weight: 500 !important; }
+    
+    .nota-discreta {
+        color: #888888;
+        font-size: 13px;
+        margin-top: 15px;
+        padding: 8px 12px;
+        border-left: 3px solid #555555;
+        background-color: #161616;
+        border-radius: 0 4px 4px 0;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -78,61 +89,21 @@ with col_titulo:
 st.divider()
 
 def extraer_peso_universal(texto):
-    if not texto: 
-        return None
-    
-    # 1. Prioridad: "Weight" seguido inmediatamente de número y unidad (incluso en líneas separadas)
-    m_directo = re.search(r'\b(?:Weight|Peso|Item\s*Weight|Shipping\s*Weight)\b[^\w\d\n\r]{0,10}[\s\n\r]*(\d+[\.,]?\d*)\s*(lb|lbs|oz|kg)\b', texto, re.IGNORECASE)
-    if m_directo:
-        val_str = m_directo.group(1).replace(",", ".")
-        unit = m_directo.group(2).lower()
-        try:
-            val = float(val_str)
-            if "lb" in unit: return val
-            if "oz" in unit: return val / 16.0
-            if "kg" in unit: return val * 2.20462
+    if not texto: return None
+    m_lb = re.search(r'Weight[\s\n:-]*(\d*[\.,]?\d+)[\s\n]*(lb|lbs)\b', texto, re.IGNORECASE)
+    if not m_lb: m_lb = re.search(r'(\d*[\.,]?\d+)[\s\n]*(lb|lbs)\b', texto, re.IGNORECASE)
+    if m_lb:
+        try: return float(m_lb.group(1).replace(",", "."))
         except: pass
-
-    # 2. Formato de JSON o etiquetas HTML (ej: "weight":"0.58 lb" o "weight": 0.58)
-    m_json = re.search(r'["\']weight["\']\s*:\s*["\']?(\d+[\.,]?\d*)\s*(lb|lbs|oz|kg)?["\']?', texto, re.IGNORECASE)
-    if m_json:
-        val_str = m_json.group(1).replace(",", ".")
-        unit = (m_json.group(2) or "lb").lower()
-        try:
-            val = float(val_str)
-            if "lb" in unit: return val
-            if "oz" in unit: return val / 16.0
-            if "kg" in unit: return val * 2.20462
-        except: pass
-
-    # 3. Formato de tabla de especificaciones John Deere (Weight y luego el valor)
-    m_tabla = re.search(r'\bWeight\b[\s\S]{1,30}?(\d+[\.,]?\d*)\s*(lb|lbs)\b', texto, re.IGNORECASE)
-    if m_tabla:
-        try:
-            val = float(m_tabla.group(1).replace(",", "."))
-            return val
-        except: pass
-
-    # 4. Formato numérico general con decimales (ignora números enteros ambiguos para evitar dientes/calibres)
-    m_dec = re.search(r'\b(\d+\.\d+|\d+,\d+)\s*(lb|lbs)\b', texto, re.IGNORECASE)
-    if m_dec:
-        try:
-            val = float(m_dec.group(1).replace(",", "."))
-            if val != 34.0:
-                return val
-        except: pass
-
-    # 5. Formato en onzas o kilogramos general
-    m_oz = re.search(r'(\d*[\.,]?\d+)\s*(oz|ounce|ounces)\b', texto, re.IGNORECASE)
+    m_oz = re.search(r'Weight[\s\n:-]*(\d*[\.,]?\d+)[\s\n]*(oz|ounce|ounces)\b', texto, re.IGNORECASE)
+    if not m_oz: m_oz = re.search(r'(\d*[\.,]?\d+)[\s\n]*(oz|ounce|ounces)\b', texto, re.IGNORECASE)
     if m_oz:
         try: return float(m_oz.group(1).replace(",", ".")) / 16.0
         except: pass
-
-    m_kg = re.search(r'(\d*[\.,]?\d+)\s*(kg|kilo|kilograms)\b', texto, re.IGNORECASE)
+    m_kg = re.search(r'(\d*[\.,]?\d+)[\s\n]*(kg|kilo|kilograms)\b', texto, re.IGNORECASE)
     if m_kg:
         try: return float(m_kg.group(1).replace(",", ".")) * 2.20462
         except: pass
-
     return None
 
 def limpiar_popups(page):
@@ -203,45 +174,35 @@ if st.session_state.estado == "PROCESANDO":
             
             try:
                 # ----------------------------------------------------
-                # Servidor 1: John Deere Shop Oficial
+                # Servidor 1: John Deere Shop (Motor original estable)
                 # ----------------------------------------------------
                 url_shop = f"https://shop.deere.com/us/search?text={ref}&productType=all"
                 page.goto(url_shop, timeout=25000)
-                page.wait_for_timeout(1500)
+                page.wait_for_timeout(1000)
                 limpiar_popups(page)
                 
-                # Si estamos en la lista de resultados, hacer clic en la ficha del producto
                 if "/p/" not in page.url and "/product/" not in page.url:
-                    enlaces = page.locator(f'a[href*="{ref}"], a[href*="/p/"], a.product-name, a[class*="productCard"]')
+                    enlaces = page.locator('a[href*="/p/"], a[href*="/product/"], a.product-name, a.name')
                     if enlaces.count() > 0:
                         try:
                             enlaces.first.click(force=True, timeout=3000)
-                            page.wait_for_timeout(2000)
+                            page.wait_for_timeout(1500)
                             limpiar_popups(page)
                         except: pass
                 
-                # Expandir pestaña de especificaciones
                 try:
                     tab_details = page.locator("text=/Product Details|Specifications/i")
                     if tab_details.count() > 0 and tab_details.first.is_visible():
                         tab_details.first.click(timeout=1000)
-                        page.wait_for_timeout(500)
                 except: pass
 
-                # Método 1A: Extraer desde el bloque HTML / datos del producto
-                contenido_html = page.content()
-                peso_lb_encontrado = extraer_peso_universal(contenido_html)
-
-                # Método 1B: Si no lo halló en el código fuente, buscar en el texto renderizado
-                if peso_lb_encontrado is None:
-                    for pos in [400, 800, 1200]:
-                        page.evaluate(f"window.scrollTo(0, {pos})")
-                        page.wait_for_timeout(300)
-                        limpiar_popups(page)
-                        texto_pagina = page.evaluate("document.body.innerText")
-                        peso_lb_encontrado = extraer_peso_universal(texto_pagina)
-                        if peso_lb_encontrado is not None: 
-                            break 
+                for pos in [400, 800, 1200]:
+                    page.evaluate(f"window.scrollTo(0, {pos})")
+                    page.wait_for_timeout(300)
+                    limpiar_popups(page)
+                    texto_pagina = page.evaluate("document.body.innerText")
+                    peso_lb_encontrado = extraer_peso_universal(texto_pagina)
+                    if peso_lb_encontrado is not None: break 
                 
                 # ----------------------------------------------------
                 # Servidor 2: RDO Equipment
@@ -252,7 +213,7 @@ if st.session_state.estado == "PROCESANDO":
                     try:
                         page.goto(url_rdo, timeout=20000)
                         page.wait_for_timeout(1500)
-                        rdo_links = page.locator(f"a[href*='{ref}'], a.product-title, a[href*='/product/']")
+                        rdo_links = page.locator("a.product-title, a[href*='/product/']")
                         if rdo_links.count() > 0:
                             rdo_links.first.click(force=True, timeout=2500)
                             page.wait_for_timeout(1200)
@@ -268,22 +229,27 @@ if st.session_state.estado == "PROCESANDO":
                     try:
                         page.goto(url_gps, timeout=20000)
                         page.wait_for_timeout(1000)
-                        gps_links = page.locator(f"a[href*='{ref}'], .product_title a")
+                        gps_links = page.locator(".product_title a, .product-title a, a[href*='John-Deere']")
                         if gps_links.count() > 0:
-                            gps_links.first.click(force=True, timeout=2500)
+                            gps_links.first.click(force=True, timeout=3000)
                             page.wait_for_timeout(1000)
-                        texto_gps = page.evaluate("document.body.innerText")
-                        peso_lb_encontrado = extraer_peso_universal(texto_gps)
+                        
+                        for pos in [400, 800]:
+                            page.evaluate(f"window.scrollTo(0, {pos})")
+                            page.wait_for_timeout(300)
+                            texto_gps = page.evaluate("document.body.innerText")
+                            peso_lb_encontrado = extraer_peso_universal(texto_gps)
+                            if peso_lb_encontrado is not None: break
                     except: pass
 
                 # ----------------------------------------------------
-                # Servidor 4: Búsqueda web directa John Deere
+                # Servidor 4: Búsqueda web directa
                 # ----------------------------------------------------
                 if peso_lb_encontrado is None:
-                    url_google = f"https://www.google.com/search?q=site:shop.deere.com+{ref}+weight"
+                    url_google = f"https://www.google.com/search?q=John+Deere+part+{ref}+weight+lbs+oz"
                     try:
                         page.goto(url_google, timeout=20000)
-                        page.wait_for_timeout(1000)
+                        page.wait_for_timeout(1200)
                         try:
                             page.locator("button:has-text('Aceptar todo'), button:has-text('Accept all')").click(timeout=1000)
                         except: pass
@@ -381,3 +347,10 @@ if st.session_state.estado in ["PAUSADO", "FINALIZADO"] and st.session_state.res
         )
         
         st.dataframe(df, use_container_width=True)
+
+    # --- NOTA TÉCNICA DISCRETA ---
+    st.markdown("""
+    <div class="nota-discreta">
+        <b>Nota de control:</b> En piezas mecánicas específicas (como discos de embrague/freno donde el catálogo lista cantidad de estrías o dientes), se recomienda una verificación manual preventiva en caso de detectar valores atípicos.
+    </div>
+    """, unsafe_allow_html=True)
