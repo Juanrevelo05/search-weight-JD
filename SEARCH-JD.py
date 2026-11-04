@@ -2,7 +2,6 @@ import subprocess
 import sys
 import os
 import re
-import io
 import streamlit as st
 import pandas as pd
 
@@ -44,7 +43,7 @@ if "resultados" not in st.session_state:
     st.session_state.indice_actual = 0
     st.session_state.estado = "ESPERANDO" 
 
-# --- ENCABEZADO CON EL LOGO DEL CARRO ROJO Y EL TÍTULO ---
+# --- ENCABEZADO CON LOGO Y TÍTULO ---
 col_logo, col_titulo = st.columns([1.5, 5.5])
 with col_logo:
     if os.path.exists("logo.jpg"):
@@ -220,16 +219,13 @@ if st.session_state.estado == "PROCESANDO":
             except Exception:
                 pass 
             
-            # Valor estándar para piezas sin peso público registrado
-            peso_estimado = False
+            # Asignación estándar si no tiene peso publicado
             if peso_lb_encontrado is None or peso_lb_encontrado <= 0:
                 peso_lb_encontrado = 0.05
-                peso_estimado = True
 
             st.session_state.resultados.append({
                 "Referencia": ref, 
-                "peso_lb_raw": peso_lb_encontrado,
-                "estimado": peso_estimado
+                "peso_lb_raw": peso_lb_encontrado
             })
             st.session_state.indice_actual += 1
             
@@ -244,75 +240,55 @@ if st.session_state.estado in ["PAUSADO", "FINALIZADO"] and st.session_state.res
     else:
         st.success("Extracción completada satisfactoriamente.")
         
-    st.write("### 2. Resultados listos para exportar")
+    st.write("### 2. Resultados listos para exportar")[cite: 17]
     
     unidad_seleccionada = st.radio(
         "Formato de unidad principal:",
         ["Libras (lb)", "Kilogramos (kg)"],
         horizontal=True
-    )
+    )[cite: 17]
     
     factor = 0.45359237 if unidad_seleccionada == "Kilogramos (kg)" else 1.0
     nombre_unidad = "Kilogramos" if unidad_seleccionada == "Kilogramos (kg)" else "Libras"
     
     filas_procesadas = []
+    lista_copiar = []
     
     for item in st.session_state.resultados:
         ref = item["Referencia"]
         peso_raw = item["peso_lb_raw"]
-        estimado = item.get("estimado", False)
         
-        if estimado:
-            val_ajustado = round(0.05 * factor, 3)
-            peso_ajustado = str(val_ajustado).replace(".", ",")
-            peso_verdadero = "N/D"
-        else:
-            if peso_raw < 0.05:
-                val_min = round(0.05 * factor, 3)
-                val_real = round(peso_raw * factor, 3)
-                peso_ajustado = str(val_min).replace(".", ",")
-                peso_verdadero = str(val_real).replace(".", ",")
-            else:
-                val_real = round(peso_raw * factor, 3)
-                peso_ajustado = str(val_real).replace(".", ",")
-                peso_verdadero = ""
-                
+        # Mantenimiento de precisión numérica
+        valor_calculado = round(peso_raw * factor, 3)
+        if valor_calculado < 0.05:
+            valor_calculado = round(0.05 * factor, 3)
+            
         filas_procesadas.append({
             "Referencia": ref,
-            f"Peso ({nombre_unidad})": peso_ajustado,
-            "Peso Original (< 0,05 lb)": peso_verdadero
+            f"Peso ({nombre_unidad})": valor_calculado
         })
+        # Formato de visualización con coma para copiar en bloque
+        lista_copiar.append(str(valor_calculado).replace(".", ","))
         
     df = pd.DataFrame(filas_procesadas)
-    # Ajuste: numeración desde el 1 en lugar del 0
+    # Numeración iniciando en 1
     df.index = range(1, len(df) + 1)
     
-    col1, col2 = st.columns([1, 2])
+    col1, col2 = st.columns([1, 2.5])
     
     with col1:
-        st.write(f"**Columna ({nombre_unidad}):**")
-        columna_pesos = "\n".join(df[f"Peso ({nombre_unidad})"].astype(str).tolist())
-        st.code(columna_pesos, language="text")
+        st.write(f"**Columna ({nombre_unidad}):**")[cite: 17]
+        st.code("\n".join(lista_copiar), language="text")[cite: 17]
         
     with col2:
-        st.write("**Tabla Consolidada:**")
-        st.dataframe(df, use_container_width=True)
-        
-        # Botón de descarga en formato nativo Excel (.xlsx) impecable
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, index=True, index_label="Item", sheet_name="Pesos_JD")
-        excel_data = output.getvalue()
-        
-        st.download_button(
-            label="📥 Descargar Tabla en Excel (.xlsx)",
-            data=excel_data,
-            file_name="Pesos_John_Deere.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            type="primary"
+        st.write("**Tabla Consolidada:**")[cite: 17]
+        # Configuración nativa para formatear visualmente el número
+        st.dataframe(
+            df,
+            column_config={
+                f"Peso ({nombre_unidad})": st.column_config.NumberColumn(
+                    format="%.3f"
+                )
+            },
+            use_container_width=True
         )
-
-    # Columna secundaria oculta dentro de un menú desplegable (oculta por defecto)
-    with st.expander("👁️ Ver / Ocultar Columna Secundaria (Piezas < 0.05 lb)"):
-        columna_verdadero = "\n".join(df["Peso Original (< 0,05 lb)"].astype(str).tolist())
-        st.code(columna_verdadero, language="text")
