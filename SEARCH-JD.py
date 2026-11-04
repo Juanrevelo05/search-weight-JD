@@ -25,7 +25,6 @@ st.set_page_config(page_title="Extractor de Pesos JD", page_icon="🏎️", layo
 # --- ESTILOS VISUALES CORPORATIVOS Y ELIMINACIÓN TOTAL DE BARRA INFERIOR ---
 st.markdown("""
 <style>
-    /* Ocultar barra inferior, creador, hosted with streamlit y badges */
     footer { display: none !important; visibility: hidden !important; }
     #MainMenu { display: none !important; visibility: hidden !important; }
     header { display: none !important; visibility: hidden !important; }
@@ -80,20 +79,35 @@ st.divider()
 
 def extraer_peso_universal(texto):
     if not texto: return None
-    m_lb = re.search(r'Weight[\s\n:-]*(\d*[\.,]?\d+)[\s\n]*(lb|lbs)\b', texto, re.IGNORECASE)
-    if not m_lb: m_lb = re.search(r'(\d*[\.,]?\d+)[\s\n]*(lb|lbs)\b', texto, re.IGNORECASE)
-    if m_lb:
-        try: return float(m_lb.group(1).replace(",", "."))
-        except: pass
-    m_oz = re.search(r'Weight[\s\n:-]*(\d*[\.,]?\d+)[\s\n]*(oz|ounce|ounces)\b', texto, re.IGNORECASE)
-    if not m_oz: m_oz = re.search(r'(\d*[\.,]?\d+)[\s\n]*(oz|ounce|ounces)\b', texto, re.IGNORECASE)
-    if m_oz:
-        try: return float(m_oz.group(1).replace(",", ".")) / 16.0
-        except: pass
-    m_kg = re.search(r'(\d*[\.,]?\d+)[\s\n]*(kg|kilo|kilograms)\b', texto, re.IGNORECASE)
-    if m_kg:
-        try: return float(m_kg.group(1).replace(",", ".")) * 2.20462
-        except: pass
+    
+    # 1. Búsqueda estricta con palabra clave (Weight / Peso)
+    patrones_estrictos = [
+        r'(?:Weight|Peso|Item\s*Weight|Shipping\s*Weight)[\s\n:-]*(\d*[\.,]?\d+)[\s\n]*(lb|lbs)\b',
+        r'(?:Weight|Peso|Item\s*Weight|Shipping\s*Weight)[\s\n:-]*(\d*[\.,]?\d+)[\s\n]*(oz|ounces)\b',
+        r'(?:Weight|Peso|Item\s*Weight|Shipping\s*Weight)[\s\n:-]*(\d*[\.,]?\d+)[\s\n]*(kg|kilo|kilograms)\b'
+    ]
+    
+    for pat in patrones_estrictos:
+        m = re.search(pat, texto, re.IGNORECASE)
+        if m:
+            val_str = m.group(1).replace(",", ".")
+            unit = m.group(2).lower()
+            try:
+                val = float(val_str)
+                if "lb" in unit: return val
+                if "oz" in unit: return val / 16.0
+                if "kg" in unit: return val * 2.20462
+            except:
+                pass
+
+    # 2. Búsqueda secundaria en formato de tabla o lista corta (solo si no encontró lo anterior)
+    m_sec_lb = re.search(r'\b(\d*[\.,]?\d+)[\s\n]*(lb|lbs)\b', texto, re.IGNORECASE)
+    if m_sec_lb:
+        try:
+            return float(m_sec_lb.group(1).replace(",", "."))
+        except:
+            pass
+
     return None
 
 def limpiar_popups(page):
@@ -163,12 +177,15 @@ if st.session_state.estado == "PROCESANDO":
             peso_lb_encontrado = None
             
             try:
-                # Servidor 1: John Deere Shop
+                # ----------------------------------------------------
+                # Servidor 1: John Deere Shop Oficial
+                # ----------------------------------------------------
                 url_shop = f"https://shop.deere.com/us/search?text={ref}&productType=all"
                 page.goto(url_shop, timeout=25000)
                 page.wait_for_timeout(1000)
                 limpiar_popups(page)
                 
+                # Si está en listado de resultados, hacer clic en el producto exacto
                 if "/p/" not in page.url and "/product/" not in page.url:
                     enlaces = page.locator('a[href*="/p/"], a[href*="/product/"], a.product-name, a.name')
                     if enlaces.count() > 0:
@@ -178,21 +195,32 @@ if st.session_state.estado == "PROCESANDO":
                             limpiar_popups(page)
                         except: pass
                 
+                # Desplegar Product Details / Specifications
                 try:
                     tab_details = page.locator("text=/Product Details|Specifications/i")
                     if tab_details.count() > 0 and tab_details.first.is_visible():
                         tab_details.first.click(timeout=1000)
                 except: pass
 
-                for pos in [400, 800, 1200]:
-                    page.evaluate(f"window.scrollTo(0, {pos})")
-                    page.wait_for_timeout(300)
-                    limpiar_popups(page)
-                    texto_pagina = page.evaluate("document.body.innerText")
-                    peso_lb_encontrado = extraer_peso_universal(texto_pagina)
-                    if peso_lb_encontrado is not None: break 
+                # Prioridad 1: Leer bloque específico de Product Dimensions / Details
+                bloques_especificos = page.locator(".product-details, .pdp-specifications, .product-specifications, [class*='ProductDetails']")
+                if bloques_especificos.count() > 0:
+                    texto_bloque = bloques_especificos.first.inner_text()
+                    peso_lb_encontrado = extraer_peso_universal(texto_bloque)
+
+                # Prioridad 2: Si no lo halló en el bloque, hacer scroll progresivo
+                if peso_lb_encontrado is None:
+                    for pos in [400, 800, 1200]:
+                        page.evaluate(f"window.scrollTo(0, {pos})")
+                        page.wait_for_timeout(300)
+                        limpiar_popups(page)
+                        texto_pagina = page.evaluate("document.body.innerText")
+                        peso_lb_encontrado = extraer_peso_universal(texto_pagina)
+                        if peso_lb_encontrado is not None: break 
                 
+                # ----------------------------------------------------
                 # Servidor 2: RDO Equipment
+                # ----------------------------------------------------
                 if peso_lb_encontrado is None:
                     texto_progreso.text(f"Consultando fuentes secundarias para: {ref}...")
                     url_rdo = f"https://www.rdoequipment.com/search?q={ref}"
@@ -207,7 +235,9 @@ if st.session_state.estado == "PROCESANDO":
                         peso_lb_encontrado = extraer_peso_universal(texto_rdo)
                     except: pass
 
+                # ----------------------------------------------------
                 # Servidor 3: GreenPartStore
+                # ----------------------------------------------------
                 if peso_lb_encontrado is None:
                     url_gps = f"https://www.greenpartstore.com/search.html?Search={ref}"
                     try:
@@ -226,7 +256,9 @@ if st.session_state.estado == "PROCESANDO":
                             if peso_lb_encontrado is not None: break
                     except: pass
 
+                # ----------------------------------------------------
                 # Servidor 4: Búsqueda web directa
+                # ----------------------------------------------------
                 if peso_lb_encontrado is None:
                     url_google = f"https://www.google.com/search?q=John+Deere+part+{ref}+weight+lbs+oz"
                     try:
