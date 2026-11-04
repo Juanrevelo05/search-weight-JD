@@ -2,6 +2,7 @@ import subprocess
 import sys
 import os
 import re
+import io
 import streamlit as st
 import pandas as pd
 
@@ -19,7 +20,6 @@ except Exception as e:
 
 from playwright.sync_api import sync_playwright
 
-# Pestaña del navegador con el carro de carreras rojo
 st.set_page_config(page_title="Extractor de Pesos JD", page_icon="🏎️", layout="wide")
 
 # --- ESTILOS VISUALES CORPORATIVOS ---
@@ -284,8 +284,10 @@ if st.session_state.estado in ["PAUSADO", "FINALIZADO"] and st.session_state.res
         })
         
     df = pd.DataFrame(filas_procesadas)
+    # Ajuste: numeración desde el 1 en lugar del 0
+    df.index = range(1, len(df) + 1)
     
-    col1, col2, col3 = st.columns([1, 1, 2])
+    col1, col2 = st.columns([1, 2])
     
     with col1:
         st.write(f"**Columna ({nombre_unidad}):**")
@@ -293,10 +295,24 @@ if st.session_state.estado in ["PAUSADO", "FINALIZADO"] and st.session_state.res
         st.code(columna_pesos, language="text")
         
     with col2:
-        st.write("**Columna Secundaria:**")
-        columna_verdadero = "\n".join(df["Peso Original (< 0,05 lb)"].astype(str).tolist())
-        st.code(columna_verdadero, language="text")
-        
-    with col3:
         st.write("**Tabla Consolidada:**")
         st.dataframe(df, use_container_width=True)
+        
+        # Botón de descarga en formato nativo Excel (.xlsx) impecable
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=True, index_label="Item", sheet_name="Pesos_JD")
+        excel_data = output.getvalue()
+        
+        st.download_button(
+            label="📥 Descargar Tabla en Excel (.xlsx)",
+            data=excel_data,
+            file_name="Pesos_John_Deere.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            type="primary"
+        )
+
+    # Columna secundaria oculta dentro de un menú desplegable (oculta por defecto)
+    with st.expander("👁️ Ver / Ocultar Columna Secundaria (Piezas < 0.05 lb)"):
+        columna_verdadero = "\n".join(df["Peso Original (< 0,05 lb)"].astype(str).tolist())
+        st.code(columna_verdadero, language="text")
