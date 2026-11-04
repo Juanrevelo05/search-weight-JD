@@ -236,17 +236,17 @@ if st.session_state.estado == "PROCESANDO":
 
 if st.session_state.estado in ["PAUSADO", "FINALIZADO"] and st.session_state.resultados:
     if st.session_state.estado == "PAUSADO":
-        st.warning(f"Proceso en pausa en la referencia {st.session_state.indice_actual}.")
+        st.warning(f"Proceso en pausa en la referencia {st.session_state.indice_actual}.")[cite: 19]
     else:
         st.success("Extracción completada satisfactoriamente.")
         
-    st.write("### 2. Resultados listos para exportar")[cite: 17]
+    st.write("### 2. Resultados listos para exportar")[cite: 19]
     
     unidad_seleccionada = st.radio(
         "Formato de unidad principal:",
         ["Libras (lb)", "Kilogramos (kg)"],
         horizontal=True
-    )[cite: 17]
+    )
     
     factor = 0.45359237 if unidad_seleccionada == "Kilogramos (kg)" else 1.0
     nombre_unidad = "Kilogramos" if unidad_seleccionada == "Kilogramos (kg)" else "Libras"
@@ -277,12 +277,11 @@ if st.session_state.estado in ["PAUSADO", "FINALIZADO"] and st.session_state.res
     col1, col2 = st.columns([1, 2.5])
     
     with col1:
-        st.write(f"**Columna ({nombre_unidad}):**")[cite: 17]
-        st.code("\n".join(lista_copiar), language="text")[cite: 17]
+        st.write(f"**Columna ({nombre_unidad}):**")
+        st.code("\n".join(lista_copiar), language="text")
         
     with col2:
-        st.write("**Tabla Consolidada:**")[cite: 17]
-        # Configuración nativa para formatear visualmente el número
+        st.write("**Tabla Consolidada:**")
         st.dataframe(
             df,
             column_config={
