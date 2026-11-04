@@ -6,7 +6,7 @@ import streamlit as st
 import pandas as pd
 
 # -------------------------------------------------------------------
-# INSTALACIÓN AUTOMÁTICA DE CHROMIUM EN STREAMLIT CLOUD
+# CONFIGURACIÓN AUTOMÁTICA DEL NAVEGADOR EN LA NUBE
 # -------------------------------------------------------------------
 @st.cache_resource
 def instalar_navegador():
@@ -15,13 +15,13 @@ def instalar_navegador():
 try:
     instalar_navegador()
 except Exception as e:
-    st.error(f"Error instalando Chromium: {e}")
+    st.error(f"Error al inicializar el servicio de consulta: {e}")
 
 from playwright.sync_api import sync_playwright
 
-st.set_page_config(page_title="Juan Modo Dios", page_icon="🏎️", layout="wide")
+st.set_page_config(page_title="Extractor de Pesos JD", page_icon="🚜", layout="wide")
 
-# --- ESTILO VISUAL (COMPATIBLE CON MODO OSCURO) ---
+# --- ESTILOS VISUALES CORPORATIVOS ---
 st.markdown("""
 <style>
     button[kind="primary"] { background-color: #B3000C !important; color: white !important; border-radius: 6px !important; font-weight: bold !important; border: none !important; padding: 0.6rem 2rem !important; }
@@ -36,7 +36,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- MEMORIA DE JUAN ---
+# --- CONTROL DE ESTADO DE SESIÓN ---
 if "resultados" not in st.session_state:
     st.session_state.resultados = []
     st.session_state.lista_referencias = []
@@ -45,12 +45,12 @@ if "resultados" not in st.session_state:
 
 col_logo, col_titulo = st.columns([1.5, 5.5])
 with col_logo:
-    if os.path.exists("logo.jpg"): st.image("logo.jpg", width=220)
-    elif os.path.exists("logo.png"): st.image("logo.png", width=220)
+    if os.path.exists("logo.jpg"): st.image("logo.jpg", width=200)
+    elif os.path.exists("logo.png"): st.image("logo.png", width=200)
 
 with col_titulo:
-    st.title("Juan 🤖 - Extracción Modo Dios")
-    st.markdown("Armado con **sangre, sudor, lágrimas** y el infalible **Protocolo Fantasma**.")
+    st.title("Extractor de Pesos John Deere")
+    st.markdown("Consulta y conversión automatizada de catálogo técnico | Salida en **Libras** y **Kilogramos**.")
 
 st.divider()
 
@@ -81,13 +81,13 @@ def limpiar_popups(page):
                 elem.first.click(timeout=300)
         except: pass
 
-st.write("### 1. Juan está listo. Pega tu lista de combate aquí:")
-referencias_input = st.text_area("Lista de Referencias:", height=150, placeholder="Pega tus referencias y déjamelo a mí...")
+st.write("### 1. Ingrese el listado de referencias:")
+referencias_input = st.text_area("Referencias (una por línea):", height=150, placeholder="CE31805\nCE31720\n19M7785")
 
 col_btn1, col_btn2, col_btn3 = st.columns(3)
 
 with col_btn1:
-    if st.button("🚀 Que comience la magia", type="primary"):
+    if st.button("🚀 Iniciar Consulta", type="primary"):
         lista_limpia = [r.strip() for r in referencias_input.split('\n') if r.strip()]
         if lista_limpia:
             st.session_state.lista_referencias = lista_limpia
@@ -95,23 +95,23 @@ with col_btn1:
             st.session_state.indice_actual = 0
             st.session_state.estado = "PROCESANDO"
         else:
-            st.warning("Juan dice: ¡Oye! Necesito al menos una referencia para trabajar.")
+            st.warning("Ingrese al menos una referencia para procesar.")
 
 with col_btn2:
     if st.session_state.estado in ["PAUSADO", "PROCESANDO"] and 0 < st.session_state.indice_actual < len(st.session_state.lista_referencias):
-        if st.button("▶️ Juan, continúa", type="primary"):
+        if st.button("▶️ Reanudar Consulta", type="primary"):
             st.session_state.estado = "PROCESANDO"
 
 with col_btn3:
     if st.session_state.estado == "PROCESANDO":
-        if st.button("🛑 ¡JUAN, DETENTE!", type="secondary"):
+        if st.button("🛑 Pausar Consulta", type="secondary"):
             st.session_state.estado = "PAUSADO"
 
 st.write("---")
 
 if st.session_state.estado == "PROCESANDO":
     total = len(st.session_state.lista_referencias)
-    st.info("🔥 Juan operando en las sombras. Cruzando redes globales de información.")
+    st.info("Procesando consulta en catálogos oficiales...")
     barra_progreso = st.progress(st.session_state.indice_actual / total)
     texto_progreso = st.empty()
     
@@ -130,12 +130,12 @@ if st.session_state.estado == "PROCESANDO":
             idx = st.session_state.indice_actual
             ref = st.session_state.lista_referencias[idx].upper()
             
-            texto_progreso.text(f"Juan hackeando el peso de: {ref} ({idx + 1} de {total})")
+            texto_progreso.text(f"Consultando referencia: {ref} ({idx + 1} de {total})")
             barra_progreso.progress((idx + 1) / total)
             peso_lb_encontrado = None
             
             try:
-                # MOTOR 1: John Deere Shop
+                # Servidor 1: John Deere Shop
                 url_shop = f"https://shop.deere.com/us/search?text={ref}&productType=all"
                 page.goto(url_shop, timeout=25000)
                 page.wait_for_timeout(1000)
@@ -164,9 +164,9 @@ if st.session_state.estado == "PROCESANDO":
                     peso_lb_encontrado = extraer_peso_universal(texto_pagina)
                     if peso_lb_encontrado is not None: break 
                 
-                # MOTOR 2: RDO Equipment
+                # Servidor 2: RDO Equipment
                 if peso_lb_encontrado is None:
-                    texto_progreso.text(f"Juan triangulando {ref} en servidores secundarios...")
+                    texto_progreso.text(f"Consultando fuentes secundarias para: {ref}...")
                     url_rdo = f"https://www.rdoequipment.com/search?q={ref}"
                     try:
                         page.goto(url_rdo, timeout=20000)
@@ -179,9 +179,8 @@ if st.session_state.estado == "PROCESANDO":
                         peso_lb_encontrado = extraer_peso_universal(texto_rdo)
                     except: pass
 
-                # MOTOR 3: GreenPartStore
+                # Servidor 3: GreenPartStore
                 if peso_lb_encontrado is None:
-                    texto_progreso.text(f"Juan forzando extracción profunda para: {ref}...")
                     url_gps = f"https://www.greenpartstore.com/search.html?Search={ref}"
                     try:
                         page.goto(url_gps, timeout=20000)
@@ -199,9 +198,8 @@ if st.session_state.estado == "PROCESANDO":
                             if peso_lb_encontrado is not None: break
                     except: pass
 
-                # MOTOR 4: Google
+                # Servidor 4: Búsqueda web directa
                 if peso_lb_encontrado is None:
-                    texto_progreso.text(f"Activando Modo Dios en la red global para: {ref}...")
                     url_google = f"https://www.google.com/search?q=John+Deere+part+{ref}+weight+lbs+oz"
                     try:
                         page.goto(url_google, timeout=20000)
@@ -216,16 +214,16 @@ if st.session_state.estado == "PROCESANDO":
             except Exception:
                 pass 
             
-            # PROTOCOLO FANTASMA
-            peso_fantasma = False
+            # Valor estándar para piezas sin peso público registrado
+            peso_estimado = False
             if peso_lb_encontrado is None or peso_lb_encontrado <= 0:
                 peso_lb_encontrado = 0.05
-                peso_fantasma = True
+                peso_estimado = True
 
             st.session_state.resultados.append({
                 "Referencia": ref, 
                 "peso_lb_raw": peso_lb_encontrado,
-                "fantasma": peso_fantasma
+                "estimado": peso_estimado
             })
             st.session_state.indice_actual += 1
             
@@ -236,14 +234,14 @@ if st.session_state.estado == "PROCESANDO":
 
 if st.session_state.estado in ["PAUSADO", "FINALIZADO"] and st.session_state.resultados:
     if st.session_state.estado == "PAUSADO":
-        st.warning(f"⏸️ **Misión Pausada.** Juan tomó un respiro en la referencia {st.session_state.indice_actual}.")
+        st.warning(f"Proceso en pausa en la referencia {st.session_state.indice_actual}.")
     else:
-        st.success("✅ **¡Juan lo hizo de nuevo!** Extracción masiva terminada. Ni un solo cero en tu lista.")
+        st.success("Extracción completada satisfactoriamente.")
         
-    st.write("### 2. Tu Excel está servido")
+    st.write("### 2. Resultados listos para exportar")
     
     unidad_seleccionada = st.radio(
-        "⚖️ **Juan, convierte la magia a:**",
+        "Formato de unidad principal:",
         ["Libras (lb)", "Kilogramos (kg)"],
         horizontal=True
     )
@@ -256,9 +254,9 @@ if st.session_state.estado in ["PAUSADO", "FINALIZADO"] and st.session_state.res
     for item in st.session_state.resultados:
         ref = item["Referencia"]
         peso_raw = item["peso_lb_raw"]
-        fantasma = item.get("fantasma", False)
+        estimado = item.get("estimado", False)
         
-        if fantasma:
+        if estimado:
             val_ajustado = round(0.05 * factor, 3)
             peso_ajustado = str(val_ajustado).replace(".", ",")
             peso_verdadero = "N/D"
@@ -276,7 +274,7 @@ if st.session_state.estado in ["PAUSADO", "FINALIZADO"] and st.session_state.res
         filas_procesadas.append({
             "Referencia": ref,
             f"Peso ({nombre_unidad})": peso_ajustado,
-            "Peso Verdadero (< 0,05 lb)": peso_verdadero
+            "Peso Original (< 0,05 lb)": peso_verdadero
         })
         
     df = pd.DataFrame(filas_procesadas)
@@ -284,15 +282,15 @@ if st.session_state.estado in ["PAUSADO", "FINALIZADO"] and st.session_state.res
     col1, col2, col3 = st.columns([1, 1, 2])
     
     with col1:
-        st.write(f"**Columna Principal ({nombre_unidad}):**")
+        st.write(f"**Columna ({nombre_unidad}):**")
         columna_pesos = "\n".join(df[f"Peso ({nombre_unidad})"].astype(str).tolist())
         st.code(columna_pesos, language="text")
         
     with col2:
         st.write("**Columna Secundaria:**")
-        columna_verdadero = "\n".join(df["Peso Verdadero (< 0,05 lb)"].astype(str).tolist())
+        columna_verdadero = "\n".join(df["Peso Original (< 0,05 lb)"].astype(str).tolist())
         st.code(columna_verdadero, language="text")
         
     with col3:
-        st.write("**Tabla de Verificación de Juan:**")
+        st.write("**Tabla Consolidada:**")
         st.dataframe(df, use_container_width=True)
