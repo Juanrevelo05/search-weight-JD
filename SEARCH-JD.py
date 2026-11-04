@@ -219,13 +219,16 @@ if st.session_state.estado == "PROCESANDO":
             except Exception:
                 pass 
             
-            # Asignación estándar si no tiene peso publicado
+            # REGLA FANTASMA / ESTIMADO
+            es_estimado = False
             if peso_lb_encontrado is None or peso_lb_encontrado <= 0:
                 peso_lb_encontrado = 0.05
+                es_estimado = True
 
             st.session_state.resultados.append({
                 "Referencia": ref, 
-                "peso_lb_raw": peso_lb_encontrado
+                "peso_lb_raw": peso_lb_encontrado,
+                "estimado": es_estimado
             })
             st.session_state.indice_actual += 1
             
@@ -257,21 +260,32 @@ if st.session_state.estado in ["PAUSADO", "FINALIZADO"] and st.session_state.res
     for item in st.session_state.resultados:
         ref = item["Referencia"]
         peso_raw = item["peso_lb_raw"]
+        estimado = item.get("estimado", False)
         
-        # Mantenimiento de precisión numérica
-        valor_calculado = round(peso_raw * factor, 3)
-        if valor_calculado < 0.05:
-            valor_calculado = round(0.05 * factor, 3)
-            
+        if estimado:
+            val_ajustado = round(0.05 * factor, 3)
+            peso_ajustado = str(val_ajustado).replace(".", ",")
+            peso_verdadero = "N/D"
+        else:
+            if peso_raw < 0.05:
+                val_min = round(0.05 * factor, 3)
+                val_real = round(peso_raw * factor, 3)
+                peso_ajustado = str(val_min).replace(".", ",")
+                peso_verdadero = str(val_real).replace(".", ",")
+            else:
+                val_real = round(peso_raw * factor, 3)
+                peso_ajustado = str(val_real).replace(".", ",")
+                peso_verdadero = ""
+                
         filas_procesadas.append({
             "Referencia": ref,
-            f"Peso ({nombre_unidad})": valor_calculado
+            f"Peso ({nombre_unidad})": peso_ajustado,
+            "Peso Original (< 0,05 lb)": peso_verdadero
         })
-        # Formato de visualización con coma para copiar en bloque
-        lista_copiar.append(str(valor_calculado).replace(".", ","))
+        lista_copiar.append(peso_ajustado)
         
     df = pd.DataFrame(filas_procesadas)
-    # Numeración iniciando en 1
+    # Numeración comenzando en 1
     df.index = range(1, len(df) + 1)
     
     col1, col2 = st.columns([1, 2.5])
@@ -282,12 +296,4 @@ if st.session_state.estado in ["PAUSADO", "FINALIZADO"] and st.session_state.res
         
     with col2:
         st.write("**Tabla Consolidada:**")
-        st.dataframe(
-            df,
-            column_config={
-                f"Peso ({nombre_unidad})": st.column_config.NumberColumn(
-                    format="%.3f"
-                )
-            },
-            use_container_width=True
-        )
+        st.dataframe(df, use_container_width=True)
