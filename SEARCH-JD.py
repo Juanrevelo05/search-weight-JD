@@ -236,11 +236,11 @@ if st.session_state.estado == "PROCESANDO":
 
 if st.session_state.estado in ["PAUSADO", "FINALIZADO"] and st.session_state.resultados:
     if st.session_state.estado == "PAUSADO":
-        st.warning(f"Proceso en pausa en la referencia {st.session_state.indice_actual}.")[cite: 19]
+        st.warning(f"Proceso en pausa en la referencia {st.session_state.indice_actual}.")
     else:
         st.success("Extracción completada satisfactoriamente.")
         
-    st.write("### 2. Resultados listos para exportar")[cite: 19]
+    st.write("### 2. Resultados listos para exportar")
     
     unidad_seleccionada = st.radio(
         "Formato de unidad principal:",
